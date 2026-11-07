@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from app.schemas.usuario_schema import UsuarioResponse # <-- Importante
 
 class DocenteBase(BaseModel):
     id_usuario: int = Field(..., description="ID del usuario asociado")
@@ -11,6 +12,7 @@ class DocenteCreate(DocenteBase):
 
 class DocenteResponse(DocenteBase):
     id_docente: int
+    usuario: Optional[UsuarioResponse] = None # <-- ESTA ES LA LÍNEA QUE FALTA
 
     class Config:
         from_attributes = True
