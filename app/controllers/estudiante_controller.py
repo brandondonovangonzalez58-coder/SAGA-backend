@@ -2,11 +2,10 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
-from app.models import Estudiante, Usuario
+from app.models import Estudiante, Usuario, Grupo
 
 class EstudianteController:
 
-    # Función auxiliar para formatear la respuesta y evitar errores de Pydantic
     @staticmethod
     def _formatear_estudiante(est: Estudiante):
         return {
@@ -14,6 +13,11 @@ class EstudianteController:
             "id_usuario": est.id_usuario,
             "id_grupo": est.id_grupo,
             "fecha_ingreso": est.fecha_ingreso,
+            "grupo": {
+                "id_grupo": est.grupo.id_grupo,
+                "nombre": est.grupo.nombre,
+                "turno": est.grupo.turno
+            } if est.grupo else None,
             "usuario": {
                 "id_usuario": est.usuario.id_usuario,
                 "nombre": est.usuario.nombre,
@@ -29,11 +33,11 @@ class EstudianteController:
     @staticmethod
     def listar(db: Session, buscar: Optional[str] = None):
         query = db.query(Estudiante).options(
-            joinedload(Estudiante.usuario).joinedload(Usuario.rol)
+            joinedload(Estudiante.usuario).joinedload(Usuario.rol),
+            joinedload(Estudiante.grupo)
         )
         
         if buscar:
-            # Si hay búsqueda, filtramos por nombre, apellido, matrícula o fecha
             query = query.join(Estudiante.usuario).filter(
                 (Usuario.nombre.like(f"%{buscar}%")) | 
                 (Usuario.apellidos.like(f"%{buscar}%")) |
@@ -46,9 +50,9 @@ class EstudianteController:
 
     @staticmethod
     def listar_por_grupo(id_grupo: int, db: Session):
-        # Usado para el pase de lista: trae a los alumnos de un grupo específico
         estudiantes = db.query(Estudiante).options(
-            joinedload(Estudiante.usuario).joinedload(Usuario.rol)
+            joinedload(Estudiante.usuario).joinedload(Usuario.rol),
+            joinedload(Estudiante.grupo)
         ).filter(Estudiante.id_grupo == id_grupo).all()
         
         return [EstudianteController._formatear_estudiante(est) for est in estudiantes]
@@ -56,7 +60,8 @@ class EstudianteController:
     @staticmethod
     def obtener(id_estudiante: int, db: Session):
         est = db.query(Estudiante).options(
-            joinedload(Estudiante.usuario).joinedload(Usuario.rol)
+            joinedload(Estudiante.usuario).joinedload(Usuario.rol),
+            joinedload(Estudiante.grupo)
         ).filter(Estudiante.id_estudiante == id_estudiante).first()
         
         if not est:
@@ -70,7 +75,6 @@ class EstudianteController:
             db.add(nuevo)
             db.commit()
             db.refresh(nuevo)
-            # Volvemos a consultar para devolver los datos con el nombre
             return EstudianteController.obtener(nuevo.id_estudiante, db)
         except IntegrityError:
             db.rollback()
