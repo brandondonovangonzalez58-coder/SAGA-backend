@@ -31,9 +31,12 @@ class DocenteController:
             joinedload(Docente.usuario).joinedload(Usuario.rol)
         )
         if buscar:
-            query = query.filter(
+            # Buscamos por número de empleado, especialidad o nombre/apellido del usuario
+            query = query.join(Docente.usuario).filter(
                 (Docente.numero_empleado.like(f"%{buscar}%")) | 
-                (Docente.especialidad.like(f"%{buscar}%"))
+                (Docente.especialidad.like(f"%{buscar}%")) |
+                (Usuario.nombre.like(f"%{buscar}%")) |
+                (Usuario.apellidos.like(f"%{buscar}%"))
             )
         
         docentes = query.all()
@@ -56,7 +59,8 @@ class DocenteController:
             db.add(nuevo)
             db.commit()
             db.refresh(nuevo)
-            return nuevo
+            # 🚨 CORREGIDO: Usamos obtener() para devolver los datos formateados con el nombre
+            return DocenteController.obtener(nuevo.id_docente, db)
         except IntegrityError:
             db.rollback()
             raise HTTPException(status_code=400, detail="El ID de usuario o número de empleado ya existe.")
@@ -71,7 +75,8 @@ class DocenteController:
                 setattr(doc, campo, valor)
             db.commit()
             db.refresh(doc)
-            return doc
+            # 🚨 CORREGIDO: Devolvemos los datos formateados
+            return DocenteController.obtener(id_docente, db)
         except IntegrityError:
             db.rollback()
             raise HTTPException(status_code=400, detail="Datos duplicados o inválidos.")
